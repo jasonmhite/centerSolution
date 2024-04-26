@@ -66,7 +66,7 @@ def manhattan_neighborhood(
     else:
         return neighborhood
 
-def count_positive_neighborhood_size(X: np.ndarray, radius: int) -> int:
+def count_positive_neighborhood_size(X: np.ndarray, radius: int, wraparound: bool=False) -> int:
     """
     Count the number of cells in a grid within a given Manhattan radius of any positive value in the array. Actual
     values in the input array are ignored, it only matters if a given entry is positive. Positive center points are
@@ -76,6 +76,7 @@ def count_positive_neighborhood_size(X: np.ndarray, radius: int) -> int:
 
     :param X: 2D Numpy array of values. They can be any type as long as they can be compared greater than 0.
     :param radius: Radius of Manhattan neighborhood around each positive center point.
+    :param wraparound: Points outside of the grid are discarded by default, if true wrap them around instead.
     :return: Integer count of the number of cells in the input array within given Manhattan distance to a positive
      entry.
     """
@@ -95,11 +96,10 @@ def count_positive_neighborhood_size(X: np.ndarray, radius: int) -> int:
     if len(positive_centers) == 0:
         return 0
 
-    # We can take the union of all the neighborhoods to get the overall set of points without repeats.
     all_neighbors = reduce(
         operator.or_, # or_ for Sets is union
         [
-            manhattan_neighborhood(center, radius, prune_wraparound=True, size=X.shape)
+            manhattan_neighborhood(center, radius, prune_wraparound=(not wraparound),  size=X.shape)
             for center in positive_centers
         ]
     )
@@ -108,5 +108,13 @@ def count_positive_neighborhood_size(X: np.ndarray, radius: int) -> int:
     # Note that it's possible for a center point to fall within the neighborhood of another center so it already may be
     # `all_neighbors`, the Set object enforces uniqueness so that we get no duplicates.
     all_neighbors.update(positive_centers)
+
+    x_max, y_max = X.shape
+
+    if wraparound:
+        # coordinates over the edges get wrapped around
+        all_neighbors = set([
+            (x % x_max, y % y_max) for (x, y) in all_neighbors
+        ])
 
     return len(all_neighbors)
